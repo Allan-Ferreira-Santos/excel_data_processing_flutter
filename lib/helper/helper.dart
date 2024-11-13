@@ -16,4 +16,14 @@ class Helper {
         .toUpperCase()
         .trim();
   }
+
+  String formatCep(String cep) {
+    cep = cep.replaceAll(
+        RegExp(r'[^0-9]'), ''); 
+    if (cep.length < 8) {
+      cep = cep.padLeft(
+          8, '0'); 
+    }
+    return cep;
+  }
 }

@@ -52,32 +52,35 @@ class ExcelController {
   }
 
   Future<void> validateCep(List<List<dynamic>> data, Excel excel) async {
-    List<Future<void>> requests = [];
-    Map<String, Map<String, dynamic>?> cacheCep = {};
+  List<Future<void>> requests = [];
+  Map<String, Map<String, dynamic>?> cacheCep = {};
 
-    for (var i = 1; i < data.length; i++) {
-      String cep = data[i][7]?.toString() ?? "";
+  for (var i = 1; i < data.length; i++) {
+    String cep = data[i][7]?.toString() ?? "";
+    cep = Helper().formatCep(cep);
 
-      log(cep);
+    log(cep);
 
-      if (cep.isNotEmpty && cep != "null") {
-        if (cacheCep.containsKey(cep)) {
-          final cepInfo = cacheCep[cep];
-          updateDataRow(data, i, cepInfo);
-        } else {
-          requests.add(() async {
-            Map<String, dynamic>? cepInfo = await requestCep(cep);
-            cacheCep[cep] = cepInfo;
-            updateDataRow(data, i, cepInfo);
-          }());
-        }
-      }
-      progressNotifier.value = 0.5 + (0.3 * (i / data.length));
+    if (cep.isEmpty || cep == "null") continue;
+
+    if (cacheCep.containsKey(cep)) {
+      final cepInfo = cacheCep[cep];
+      updateDataRow(data, i, cepInfo);
+    } else {
+      requests.add(() async {
+        Map<String, dynamic>? cepInfo = await requestCep(cep);
+        cacheCep[cep] = cepInfo;
+        updateDataRow(data, i, cepInfo);
+      }());
     }
 
-    await Future.wait(requests);
-    await _preprocessarDados(data, excel);
+    progressNotifier.value = 0.5 + (0.3 * (i / data.length));
   }
+
+  await Future.wait(requests);
+  await _preprocessarDados(data, excel);
+}
+
 
   void updateDataRow(
       List<List<dynamic>> data, int rowIndex, Map<String, dynamic>? cepInfo) {
