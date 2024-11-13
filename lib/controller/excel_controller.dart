@@ -26,7 +26,6 @@ class ExcelController {
       progressNotifier.value = 0.3;
       processExcel(excel);
     } else {
-      //TODO: codlocar um Dialog se der merda
       print('Erro ao ler o arquivo: bytes não disponíveis');
     }
   }
@@ -53,28 +52,45 @@ class ExcelController {
   }
 
   Future<void> validateCep(List<List<dynamic>> data, Excel excel) async {
+    List<Future<void>> requests = [];
+    Map<String, Map<String, dynamic>?> cacheCep = {};
+
     for (var i = 1; i < data.length; i++) {
       String cep = data[i][7]?.toString() ?? "";
+
+      log(cep);
+
       if (cep.isNotEmpty && cep != "null") {
-        Map<String, dynamic>? cepInfo = await requestCep(cep);
-
-        String? neighborhood =
-            cepInfo?['neighborhood']?.toString().isEmpty ?? true
-                ? null
-                : cepInfo?['neighborhood']?.toString();
-        String? city = cepInfo?['city']?.toString();
-        String? state = cepInfo?['state']?.toString();
-
-        log(cepInfo.toString());
-
-        data[i][6] = neighborhood != null ? TextCellValue(neighborhood) : null;
-        data[i][8] = city != null ? TextCellValue(city) : null;
-        data[i][9] = state != null ? TextCellValue(state) : null;
-        progressNotifier.value = 0.5 + (0.3 * (i / data.length));
+        if (cacheCep.containsKey(cep)) {
+          final cepInfo = cacheCep[cep];
+          updateDataRow(data, i, cepInfo);
+        } else {
+          requests.add(() async {
+            Map<String, dynamic>? cepInfo = await requestCep(cep);
+            cacheCep[cep] = cepInfo;
+            updateDataRow(data, i, cepInfo);
+          }());
+        }
       }
+      progressNotifier.value = 0.5 + (0.3 * (i / data.length));
     }
 
+    await Future.wait(requests);
     await _preprocessarDados(data, excel);
+  }
+
+  void updateDataRow(
+      List<List<dynamic>> data, int rowIndex, Map<String, dynamic>? cepInfo) {
+    String? neighborhood = cepInfo?['neighborhood']?.toString().isEmpty ?? true
+        ? null
+        : cepInfo?['neighborhood']?.toString();
+    String? city = cepInfo?['city']?.toString();
+    String? state = cepInfo?['state']?.toString();
+
+    data[rowIndex][6] =
+        neighborhood != null ? TextCellValue(neighborhood) : null;
+    data[rowIndex][8] = city != null ? TextCellValue(city) : null;
+    data[rowIndex][9] = state != null ? TextCellValue(state) : null;
   }
 
   Future<Map<String, dynamic>?> requestCep(String cep) async {
@@ -202,6 +218,7 @@ class ExcelController {
         newRow.add('');
       }
       newData.add(newRow);
+      progressNotifier.value = 0.7 + (i / data.length) * 0.2;
     }
     progressNotifier.value = 0.9;
     await saveExcel(newData, excel);

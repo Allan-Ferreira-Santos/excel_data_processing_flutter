@@ -15,9 +15,8 @@ class _ExcelViewState extends State<ExcelView> {
   void initState() {
     super.initState();
     controller.progressNotifier.addListener(() {
-      setState(() {}); // Rebuild when progress changes
+      setState(() {});
       if (controller.progressNotifier.value == 1.0) {
-        // Show dialog when progress reaches 100%
         showCompletionDialog();
       }
     });
